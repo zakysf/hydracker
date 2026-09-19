@@ -1,5 +1,5 @@
 -- ============================================================
--- SQL Schema Setup untuk HydroTrack di Supabase
+-- SQL Schema Setup untuk Hydracker di Supabase
 -- Buka Supabase Dashboard -> SQL Editor -> Tempel & Klik 'Run'
 -- ============================================================
 

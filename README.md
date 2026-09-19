@@ -1,4 +1,4 @@
-# hydrotrack
+# Hydracker - Aplikasi Pemantau Hidrasi & Pelacak Minum
 
 A new Flutter project.
 

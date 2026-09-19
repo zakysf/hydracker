@@ -1,119 +1,202 @@
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
+import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'supabase_config.dart';
 
+/// Helper Database menggunakan Supabase Client
+/// 
+/// Seluruh operasi database (CRUD User, Target Air, & Konsumsi) terhubung langsung ke cloud Supabase.
+/// Konfigurasi URL dan Anon Key terdapat pada [SupabaseConfig].
 class DBHelper {
   static final DBHelper _instance = DBHelper._internal();
   factory DBHelper() => _instance;
   DBHelper._internal();
 
-  static Database? _db;
+  /// Supabase Client Instance
+  SupabaseClient get client => Supabase.instance.client;
 
-  Future<Database> get database async {
-    if (_db != null) return _db!;
-    _db = await _initDB();
-    return _db!;
-  }
+  // ==========================================
+  // ---------- USER / AUTHENTICATION ----------
+  // ==========================================
 
-  Future<Database> _initDB() async {
-    String path = join(await getDatabasesPath(), 'hydrotrack.db');
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: (db, version) async {
-        // Tabel user / anggota
-        await db.execute('''
-          CREATE TABLE users(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nama TEXT NOT NULL,
-            username TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL,
-            berat REAL,
-            tinggi REAL,
-            tanggalLahir TEXT
-          )
-        ''');
-
-        // Tabel catatan konsumsi air (CRUD utama)
-        await db.execute('''
-          CREATE TABLE konsumsi(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            userId INTEGER,
-            jenis TEXT NOT NULL,
-            volume REAL NOT NULL,
-            tanggal TEXT NOT NULL,
-            waktu TEXT NOT NULL,
-            FOREIGN KEY(userId) REFERENCES users(id)
-          )
-        ''');
-
-        // Akun default supaya bisa langsung login untuk demo
-        await db.insert('users', {
-          'nama': 'Zaky',
-          'username': 'admin',
-          'password': 'admin123',
-          'berat': 60,
-          'tinggi': 170,
-          'tanggalLahir': '2000-01-01',
-        });
-      },
-    );
-  }
-
-  // ---------- USER / LOGIN ----------
+  /// Login berdasarkan username & password
   Future<Map<String, dynamic>?> login(String username, String password) async {
-    final db = await database;
-    final result = await db.query(
-      'users',
-      where: 'username = ? AND password = ?',
-      whereArgs: [username, password],
-    );
-    if (result.isNotEmpty) return result.first;
-    return null;
+    try {
+      final response = await client
+          .from('users')
+          .select()
+          .eq('username', username)
+          .eq('password', password)
+          .maybeSingle();
+
+      return response;
+    } catch (e) {
+      debugPrint('Error DBHelper.login: $e');
+      return null;
+    }
   }
 
-  Future<int> registerUser(Map<String, dynamic> data) async {
-    final db = await database;
-    return await db.insert('users', data);
+  /// Ambil profil user berdasarkan ID
+  Future<Map<String, dynamic>?> getUserById(int userId) async {
+    try {
+      final response = await client
+          .from('users')
+          .select()
+          .eq('id', userId)
+          .maybeSingle();
+
+      return response;
+    } catch (e) {
+      debugPrint('Error DBHelper.getUserById: $e');
+      return null;
+    }
   }
 
+  /// Update target air minum harian user (dalam satuan ml)
+  Future<void> updateTargetAir(int userId, double targetMl) async {
+    try {
+      await client
+          .from('users')
+          .update({'targetAir': targetMl})
+          .eq('id', userId);
+    } catch (e) {
+      debugPrint('Error DBHelper.updateTargetAir: $e');
+      rethrow;
+    }
+  }
+
+  /// Pendaftaran User Baru
+  Future<dynamic> registerUser(Map<String, dynamic> data) async {
+    try {
+      final response = await client
+          .from('users')
+          .insert(data)
+          .select()
+          .single();
+      return response;
+    } catch (e) {
+      debugPrint('Error DBHelper.registerUser: $e');
+      rethrow;
+    }
+  }
+
+  /// Mengambil semua daftar user / anggota
   Future<List<Map<String, dynamic>>> getAllUsers() async {
-    final db = await database;
-    return await db.query('users');
+    try {
+      final response = await client
+          .from('users')
+          .select()
+          .order('id', ascending: true);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('Error DBHelper.getAllUsers: $e');
+      return [];
+    }
   }
 
-  Future<int> updateUser(int id, Map<String, dynamic> data) async {
-    final db = await database;
-    return await db.update('users', data, where: 'id = ?', whereArgs: [id]);
+  /// Update data user berdasarkan ID
+  Future<void> updateUser(int id, Map<String, dynamic> data) async {
+    try {
+      await client
+          .from('users')
+          .update(data)
+          .eq('id', id);
+    } catch (e) {
+      debugPrint('Error DBHelper.updateUser: $e');
+      rethrow;
+    }
   }
 
-  Future<int> deleteUser(int id) async {
-    final db = await database;
-    return await db.delete('users', where: 'id = ?', whereArgs: [id]);
+  /// Hapus user berdasarkan ID
+  Future<void> deleteUser(int id) async {
+    try {
+      await client
+          .from('users')
+          .delete()
+          .eq('id', id);
+    } catch (e) {
+      debugPrint('Error DBHelper.deleteUser: $e');
+      rethrow;
+    }
   }
 
-  // ---------- KONSUMSI AIR (CRUD) ----------
-  Future<int> tambahKonsumsi(Map<String, dynamic> data) async {
-    final db = await database;
-    return await db.insert('konsumsi', data);
+  // ==========================================
+  // ---------- KONSUMSI AIR (CRUD) -----------
+  // ==========================================
+
+  /// Tambah catatan konsumsi air baru
+  Future<dynamic> tambahKonsumsi(Map<String, dynamic> data) async {
+    try {
+      final response = await client
+          .from('konsumsi')
+          .insert(data)
+          .select()
+          .single();
+      return response;
+    } catch (e) {
+      debugPrint('Error DBHelper.tambahKonsumsi: $e');
+      rethrow;
+    }
   }
 
+  /// Ambil riwayat konsumsi air per user (diurutkan dari yang terbaru)
   Future<List<Map<String, dynamic>>> getKonsumsiByUser(int userId) async {
-    final db = await database;
-    return await db.query(
-      'konsumsi',
-      where: 'userId = ?',
-      whereArgs: [userId],
-      orderBy: 'id DESC',
-    );
+    try {
+      final response = await client
+          .from('konsumsi')
+          .select()
+          .eq('userId', userId)
+          .order('id', ascending: false);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('Error DBHelper.getKonsumsiByUser: $e');
+      return [];
+    }
   }
 
-  Future<int> updateKonsumsi(int id, Map<String, dynamic> data) async {
-    final db = await database;
-    return await db.update('konsumsi', data, where: 'id = ?', whereArgs: [id]);
+  /// Ambil riwayat konsumsi air user khusus hari ini
+  Future<List<Map<String, dynamic>>> getKonsumsiHariIni(int userId) async {
+    try {
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      final response = await client
+          .from('konsumsi')
+          .select()
+          .eq('userId', userId)
+          .eq('tanggal', today)
+          .order('id', ascending: false);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('Error DBHelper.getKonsumsiHariIni: $e');
+      return [];
+    }
   }
 
-  Future<int> deleteKonsumsi(int id) async {
-    final db = await database;
-    return await db.delete('konsumsi', where: 'id = ?', whereArgs: [id]);
+  /// Update catatan konsumsi air
+  Future<void> updateKonsumsi(int id, Map<String, dynamic> data) async {
+    try {
+      await client
+          .from('konsumsi')
+          .update(data)
+          .eq('id', id);
+    } catch (e) {
+      debugPrint('Error DBHelper.updateKonsumsi: $e');
+      rethrow;
+    }
+  }
+
+  /// Hapus catatan konsumsi air
+  Future<void> deleteKonsumsi(int id) async {
+    try {
+      await client
+          .from('konsumsi')
+          .delete()
+          .eq('id', id);
+    } catch (e) {
+      debugPrint('Error DBHelper.deleteKonsumsi: $e');
+      rethrow;
+    }
   }
 }

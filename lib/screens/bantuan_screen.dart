@@ -1,41 +1,32 @@
 import 'package:flutter/material.dart';
-import '../utils/session.dart';
-import 'login_screen.dart';
 
 class BantuanScreen extends StatelessWidget {
   const BantuanScreen({super.key});
 
-  Future<void> _logout(BuildContext context) async {
-    final konfirmasi = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Keluar'),
-        content: const Text('Apakah Anda yakin ingin logout?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Logout')),
-        ],
-      ),
-    );
-    if (konfirmasi == true) {
-      await Session.logout();
-      if (!context.mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-        (route) => false,
-      );
-    }
-  }
-
-  Widget _panduanItem(String judul, String isi) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _panduanAccordion({
+    required IconData icon,
+    required String judul,
+    required String isi,
+  }) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 10),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ExpansionTile(
+        leading: Icon(icon, color: const Color(0xFF0288D1)),
+        title: Text(
+          judul,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+        ),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        expandedCrossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(judul, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-          const SizedBox(height: 2),
-          Text(isi, style: const TextStyle(color: Colors.black87)),
+          const Divider(),
+          const SizedBox(height: 4),
+          Text(
+            isi,
+            style: const TextStyle(color: Colors.black87, height: 1.4),
+          ),
         ],
       ),
     );
@@ -44,36 +35,54 @@ class BantuanScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Bantuan')),
+      appBar: AppBar(title: const Text('Bantuan & Panduan')),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         children: [
-          const Text('Cara Penggunaan Aplikasi',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          _panduanItem('1. Daftar Anggota',
-              'Menampilkan daftar seluruh pengguna yang sudah terdaftar di aplikasi.'),
-          _panduanItem('2. Kalkulator Kebutuhan Air',
-              'Masukkan berat badan dan tingkat aktivitas untuk mengetahui target minum harian.'),
-          _panduanItem('3. Catatan Konsumsi Air',
-              'Tambah, ubah, atau hapus catatan minuman yang sudah Anda konsumsi hari ini. Geser ke kiri untuk menghapus.'),
-          _panduanItem('4. Konversi Tanggal Hijriah',
-              'Pilih tanggal Masehi untuk melihat tanggal Hijriah yang sesuai.'),
-          _panduanItem('5. Konversi Umur Detail',
-              'Pilih tanggal lahir untuk melihat umur secara rinci mulai dari tahun hingga detik (berjalan realtime).'),
-          _panduanItem('6. Weton & Kalender Saka Bali',
-              'Pilih tanggal untuk melihat weton (hari pasaran Jawa) dan tahun Saka Bali.'),
-          _panduanItem('7. Stopwatch',
-              'Gunakan untuk mengukur interval waktu, misalnya jeda antar waktu minum air.'),
-          const Divider(height: 32),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => _logout(context),
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              icon: const Icon(Icons.logout, color: Colors.white),
-              label: const Text('Logout', style: TextStyle(color: Colors.white)),
+          const Padding(
+            padding: EdgeInsets.only(left: 4, bottom: 12),
+            child: Text(
+              'Panduan Fitur Aplikasi',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
+          ),
+          _panduanAccordion(
+            icon: Icons.group,
+            judul: '1. Daftar Anggota',
+            isi: 'Menampilkan daftar seluruh pengguna yang terdaftar di database cloud Supabase. Anda dapat melihat profil, berat badan, dan tinggi badan anggota.',
+          ),
+          _panduanAccordion(
+            icon: Icons.calculate,
+            judul: '2. Kalkulator Kebutuhan Air',
+            isi: 'Masukkan berat badan (angka dalam kg) dan pilih tingkat aktivitas fisik Anda. Sistem akan menghitung target konsumsi air ideal harian Anda.',
+          ),
+          _panduanAccordion(
+            icon: Icons.local_drink,
+            judul: '3. Catatan Konsumsi Air (CRUD)',
+            isi: 'Kelola riwayat minum Anda secara lengkap:\n'
+                '• Tambah: Tekan tombol (+) di pojok kanan bawah.\n'
+                '• Edit: Tekan tombol pensil biru pada item catatan.\n'
+                '• Hapus: Tekan tombol tempat sampah merah untuk menghapus catatan.',
+          ),
+          _panduanAccordion(
+            icon: Icons.calendar_month,
+            judul: '4. Konversi Tanggal Hijriah',
+            isi: 'Pilih tanggal Masehi melalui pemilih kalender untuk melihat padanan tanggal dalam penanggalan kalender Islam (Hijriah).',
+          ),
+          _panduanAccordion(
+            icon: Icons.cake,
+            judul: '5. Konversi Umur Detail',
+            isi: 'Pilih tanggal lahir Anda untuk menghitung umur secara detail (Tahun, Bulan, Hari, Jam, Menit, hingga Detik yang berjalan realtime).',
+          ),
+          _panduanAccordion(
+            icon: Icons.auto_awesome,
+            judul: '6. Weton & Kalender Saka Bali',
+            isi: 'Pilih tanggal untuk melihat nama hari pasaran Jawa (Weton: Legi, Pahing, Pon, Wage, Kliwon) serta penanggalan kalender Saka Bali.',
+          ),
+          _panduanAccordion(
+            icon: Icons.timer,
+            judul: '7. Stopwatch',
+            isi: 'Gunakan timer stopwatch untuk mengukur interval waktu, jeda olahraga, maupun pengingat waktu jeda minum air.',
           ),
         ],
       ),

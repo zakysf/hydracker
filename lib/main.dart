@@ -1,9 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide Session;
+import 'db/supabase_config.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_nav.dart';
 import 'utils/session.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Muat file environment .env
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    debugPrint('Peringatan: Gagal memuat file .env: $e');
+  }
+
+  // Inisialisasi Supabase
+  try {
+    if (SupabaseConfig.url.isNotEmpty && SupabaseConfig.anonKey.isNotEmpty) {
+      await Supabase.initialize(
+        url: SupabaseConfig.url,
+        anonKey: SupabaseConfig.anonKey,
+      );
+    } else {
+      debugPrint('Peringatan: SUPABASE_URL atau SUPABASE_ANON_KEY di .env masih kosong.');
+    }
+  } catch (e) {
+    debugPrint('Peringatan: Gagal inisialisasi Supabase: $e');
+  }
+
   runApp(const HydroTrackApp());
 }
 
